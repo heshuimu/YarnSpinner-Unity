@@ -42,7 +42,7 @@ namespace Yarn.Unity
         }
     }
 
-    
+
 
     public class Actions : ICommandDispatcher
     {
@@ -219,7 +219,7 @@ namespace Yarn.Unity
                 }
             }
 
-            internal CommandDispatchResult Invoke(DialogueRunner dispatcher, List<string> parameters, out Coroutine commandCoroutine)
+            internal CommandDispatchResult Invoke(DialogueRunner dispatcher, List<string> parameters, out object commandCoroutine)
             {
                 object target;
 
@@ -297,7 +297,15 @@ namespace Yarn.Unity
 
                 var returnValue = this.Method.Invoke(target, finalParameters);
 
-                if (returnValue is Coroutine coro)
+                if (returnValue is Awaitable awaitable)
+                {
+                    commandCoroutine = awaitable;
+                    return new CommandDispatchResult
+                    {
+                        Status = CommandDispatchResult.StatusType.SucceededAsync
+                    };
+                }
+                else if (returnValue is Coroutine coro)
                 {
                     commandCoroutine = coro;
                     return new CommandDispatchResult
@@ -346,7 +354,7 @@ namespace Yarn.Unity
 
                         if (parameter.IsOptional) {
                             displayName = $"[{displayName} = {parameter.DefaultValue}]";
-                            
+
                         }
 
                         components.Add(displayName);
@@ -383,7 +391,7 @@ namespace Yarn.Unity
         private static string GetFullMethodName(MethodInfo method) {
             return $"{method.DeclaringType.FullName}.{method.Name}";
         }
- 
+
         public void RegisterActions() {
             foreach (var registrationFunction in ActionRegistrationMethods) {
                 registrationFunction.Invoke(DialogueRunner);
@@ -469,7 +477,7 @@ namespace Yarn.Unity
             if (_commands.Remove(commandName) == false) {
                 Debug.LogError($"Can't remove command {commandName}, because no command with this name is currently registered.");
             }
-            
+
         }
 
         public void RemoveFunction(string name)
@@ -487,7 +495,7 @@ namespace Yarn.Unity
             // no-op
         }
 
-        CommandDispatchResult ICommandDispatcher.DispatchCommand(string command, out Coroutine commandCoroutine)
+        CommandDispatchResult ICommandDispatcher.DispatchCommand(string command, out object commandCoroutine)
         {
             var commandPieces = new List<string>(DialogueRunner.SplitCommandText(command));
 
@@ -569,7 +577,7 @@ namespace Yarn.Unity
                 {
                     // If the argument is the name of the parameter, interpret
                     // the argument as 'true'.
-                    if (arg.Equals(parameter.Name, StringComparison.InvariantCultureIgnoreCase)) 
+                    if (arg.Equals(parameter.Name, StringComparison.InvariantCultureIgnoreCase))
                     {
                         return true;
                     }

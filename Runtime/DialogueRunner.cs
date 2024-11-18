@@ -36,7 +36,7 @@ namespace Yarn.Unity
         /// <inheritdoc cref="_variableStorage"/>
         public VariableStorageBehaviour VariableStorage
         {
-            get => _variableStorage; 
+            get => _variableStorage;
             set
             {
                 _variableStorage = value;
@@ -279,7 +279,7 @@ namespace Yarn.Unity
             // If the dialogue is currently executing instructions, then
             // calling ContinueDialogue() at the end of this method will
             // cause confusing results. Report an error and stop here.
-            if (Dialogue.IsActive) 
+            if (Dialogue.IsActive)
             {
                 Debug.LogError($"Can't start dialogue from node {startNode}: the dialogue is currently in the middle of running. Stop the dialogue first.");
                 return;
@@ -293,7 +293,7 @@ namespace Yarn.Unity
             // Stop any processes that might be running already
             foreach (var dialogueView in dialogueViews)
             {
-                if (dialogueView == null || dialogueView.isActiveAndEnabled == false) 
+                if (dialogueView == null || dialogueView.isActiveAndEnabled == false)
                 {
                     continue;
                 }
@@ -575,7 +575,7 @@ namespace Yarn.Unity
         /// <param name="name">The name of the function to remove.</param>
         /// <seealso cref="AddFunction{TResult}(string, Func{TResult})"/>
         public void RemoveFunction(string name) => CommandDispatcher.RemoveFunction(name);
-        
+
         /// <summary>
         /// Sets the dialogue views and makes sure the callback <see cref="DialogueViewBase.MarkLineComplete"/>
         /// will respond correctly.
@@ -630,7 +630,7 @@ namespace Yarn.Unity
 
         void Awake()
         {
-            
+
             if (dialogueViews.Length == 0)
             {
                 Debug.LogWarning($"Dialogue Runner doesn't have any dialogue views set up. No lines or options will be visible.");
@@ -803,7 +803,7 @@ namespace Yarn.Unity
                         IsAvailable = options.Options[i].IsAvailable,
                     };
                 }
-                
+
                 // Don't allow selecting options on the same frame that we
                 // provide them
                 IsOptionSelectionAllowed = false;
@@ -833,7 +833,7 @@ namespace Yarn.Unity
 
         internal void HandleCommand(Command command)
         {
-            var dispatchResult = CommandDispatcher.DispatchCommand(command.Text, out Coroutine awaitCoroutine);
+            var dispatchResult = CommandDispatcher.DispatchCommand(command.Text, out object awaitCoroutine);
 
             switch (dispatchResult.Status)
             {
@@ -844,7 +844,15 @@ namespace Yarn.Unity
                 case CommandDispatchResult.StatusType.SucceededAsync:
                     // We got a coroutine to wait for. Wait for it, and call
                     // Continue.
-                    StartCoroutine(WaitForYieldInstruction(awaitCoroutine, () => ContinueDialogue(true)));
+                    if (awaitCoroutine is Awaitable awaitable)
+                    {
+                        _ = WaitForAwaitable(awaitable, () => ContinueDialogue(true));
+                    }
+                    else if(awaitCoroutine is Coroutine coroutine)
+                    {
+                        StartCoroutine(WaitForYieldInstruction(coroutine, () => ContinueDialogue(true)));
+                    }
+
                     return;
             }
 
@@ -949,7 +957,7 @@ namespace Yarn.Unity
                 // Clear the set of active dialogue views, just in case
                 ActiveDialogueViews.Clear();
 
-                // the following is broken up into two stages because otherwise if the 
+                // the following is broken up into two stages because otherwise if the
                 // first view happens to finish first once it calls dialogue complete
                 // it will empty the set of active views resulting in the line being considered
                 // finished by the runner despite there being a bunch of views still waiting
@@ -1018,7 +1026,7 @@ namespace Yarn.Unity
             if (IsOptionSelectionAllowed == false) {
                 throw new InvalidOperationException("Selecting an option on the same frame that options are provided is not allowed. Wait at least one frame before selecting an option.");
             }
-            
+
             // Mark that this is the currently selected option in the
             // Dialogue
             Dialogue.SetSelectedOption(optionIndex);
@@ -1042,6 +1050,13 @@ namespace Yarn.Unity
                 ContinueDialogue();
             }
 
+        }
+
+        private static async Awaitable WaitForAwaitable(Awaitable awaitable, Action onSuccessfulDispatch)
+        {
+            await awaitable;
+
+            onSuccessfulDispatch();
         }
 
         private static IEnumerator WaitForYieldInstruction(YieldInstruction yieldInstruction, Action onSuccessfulDispatch)
@@ -1068,7 +1083,7 @@ namespace Yarn.Unity
             // the set of active views.
             ActiveDialogueViews.Remove(dialogueView);
 
-            // Have all of the views completed? 
+            // Have all of the views completed?
             if (ActiveDialogueViews.Count == 0)
             {
                 DismissLineFromViews(dialogueViews);
@@ -1096,7 +1111,7 @@ namespace Yarn.Unity
                     return;
                 }
             }
-            
+
             CurrentLine = null;
             Dialogue.Continue();
         }
@@ -1153,7 +1168,7 @@ namespace Yarn.Unity
 
             foreach (var dialogueView in dialogueViews)
             {
-                if (dialogueView == null || dialogueView.isActiveAndEnabled == false) 
+                if (dialogueView == null || dialogueView.isActiveAndEnabled == false)
                 {
                     continue;
                 }
@@ -1168,7 +1183,7 @@ namespace Yarn.Unity
             // it from the set of active views.
             ActiveDialogueViews.Remove(dialogueView);
 
-            // Have all of the views completed dismissal? 
+            // Have all of the views completed dismissal?
             if (ActiveDialogueViews.Count == 0)
             {
                 // Then we're ready to continue to the next piece of
@@ -1295,7 +1310,7 @@ namespace Yarn.Unity
 
             return results;
         }
-        
+
 
         /// <summary>
         /// Loads all variables from the <see cref="PlayerPrefs"/> object into
@@ -1453,7 +1468,7 @@ namespace Yarn.Unity
                 return false;
             }
         }
-        
+
         // takes in a JSON string and converts it into a tuple of dictionaries
         // intended to let you just dump these straight into the variable storage
         // throws exceptions if unable to convert or if the conversion half works
